@@ -45,6 +45,23 @@ class NetworkDataFetcher {
         }
     }
     
+    func getNews(completion: @escaping (Result<NewsResponseWrapped,Error>) -> Void) {
+        let parameters = ["filters": "post,photo"]
+        NetworkManager.shared.getRequest(path: API.newsfeedGet, parameters: parameters) { [weak self] result in
+            guard let self = self else { return }
+            switch result {
+            case .success(let data):
+                guard let model = self.decodeJSON(type: NewsResponseWrapped.self, data: data) else {
+                    completion(.failure(NetworkError.unknownError))
+                    return
+                }
+                completion(.success(model))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
     func getPhotos(for id: Int?, completion: @escaping (Result<PhotosResponseWrapped,Error>) -> Void) {
         var parameters = ["album_id": "profile"]
         if let id = id {
