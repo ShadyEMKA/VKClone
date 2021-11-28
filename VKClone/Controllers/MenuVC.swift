@@ -18,7 +18,8 @@ class MenuVC: UITabBarController {
     private func configure() {
         let configImage = UIImage.SymbolConfiguration(weight: .bold)
         viewControllers = [createNavigationController(for: ProfileVC(), title: "Профиль", image: UIImage(systemName: "person", withConfiguration: configImage)!),
-                           createNavigationController(for: FriendsVC(), title: "Друзья", image: UIImage(systemName: "person.2", withConfiguration: configImage)!)]
+                           createNavigationController(for: FriendsVC(), title: "Друзья", image: UIImage(systemName: "person.2", withConfiguration: configImage)!),
+                           createNavigationController(for: NewsfeedVC(), title: "Новости", image: UIImage(systemName: "newspaper", withConfiguration: configImage)!)]
         tabBar.tintColor = .tabBarItem()
         tabBar.unselectedItemTintColor = .tabBarUnselectedItem()
         let appearance = UITabBarAppearance()
