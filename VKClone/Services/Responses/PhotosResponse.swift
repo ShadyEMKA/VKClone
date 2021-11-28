@@ -42,4 +42,3 @@ struct PhotoSizeItem: Decodable {
     let url: String
     let type: String
 }
-

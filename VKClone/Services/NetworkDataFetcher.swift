@@ -51,11 +51,56 @@ class NetworkDataFetcher {
             guard let self = self else { return }
             switch result {
             case .success(let data):
-                guard let model = self.decodeJSON(type: NewsResponseWrapped.self, data: data) else {
-                    completion(.failure(NetworkError.unknownError))
-                    return
+                let dataJSON = try! JSONSerialization.jsonObject(with: data) as! NSDictionary
+                
+                let items = ((dataJSON.value(forKey: "response") as! NSDictionary).value(forKey: "items")) as! NSArray
+                let profiles = ((dataJSON.value(forKey: "response") as! NSDictionary).value(forKey: "profiles")) as! NSArray
+                let groups = ((dataJSON.value(forKey: "response") as! NSDictionary).value(forKey: "groups")) as! NSArray
+                
+                var newsResponseItem = [News]()
+                var newsResponseProfile = [Profile]()
+                var newsResponseGroup = [Group]()
+
+                let requestQueue = DispatchGroup()
+                
+                DispatchQueue.global().async(group: requestQueue) {
+                    for item in items {
+                        let itemsData = try! JSONSerialization.data(withJSONObject: item)
+                        guard let model = self.decodeJSON(type: News.self, data: itemsData) else {
+                            completion(.failure(NetworkError.unknownError))
+                            return
+                        }
+                        newsResponseItem.append(model)
+                    }
                 }
-                completion(.success(model))
+                DispatchQueue.global().async(group: requestQueue) {
+                    for profile in profiles {
+                        let profilesData = try! JSONSerialization.data(withJSONObject: profile)
+                        guard let model = self.decodeJSON(type: Profile.self, data: profilesData) else {
+                            completion(.failure(NetworkError.unknownError))
+                            return
+                        }
+                        newsResponseProfile.append(model)
+                    }
+                }
+                DispatchQueue.global().async(group: requestQueue) {
+                    for group in groups {
+                        let groupsData = try! JSONSerialization.data(withJSONObject: group)
+                        guard let model = self.decodeJSON(type: Group.self, data: groupsData) else {
+                            completion(.failure(NetworkError.unknownError))
+                            return
+                        }
+                        newsResponseGroup.append(model)
+                    }
+                }
+
+                requestQueue.notify(queue: DispatchQueue.main) {
+                    let response = NewsResponse(items: newsResponseItem,
+                                                profiles: newsResponseProfile,
+                                                groups: newsResponseGroup)
+                    let news = NewsResponseWrapped(response: response)
+                    completion(.success(news))
+                }
             case .failure(let error):
                 completion(.failure(error))
             }
