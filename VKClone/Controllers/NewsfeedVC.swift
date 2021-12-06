@@ -118,11 +118,11 @@ extension NewsfeedVC {
                                                text: item.text,
                                                moreTextButton: self.configureMoreTextButton(text: item.text),
                                                photoAttacments: self.configurePhotoAttachment(value: item.attachments),
-                                               likes: item.likes?.count.reviewCountForNews(),
+                                               likes: item.likes?.count.reviewCountForNew(),
                                                likesUser: self.isLike(value: item.likes?.userLikes),
-                                               comments: item.comments?.count.reviewCountForNews(),
-                                               reposts: item.reposts?.count.reviewCountForNews(),
-                                               views: item.views?.count.reviewCountForNews()))
+                                               comments: item.comments?.count.reviewCountForNew(),
+                                               reposts: item.reposts?.count.reviewCountForNew(),
+                                               views: item.views?.count.reviewCountForNew()))
             }
         }
         return queue.sync {

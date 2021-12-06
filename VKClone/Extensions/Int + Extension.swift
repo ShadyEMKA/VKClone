@@ -9,7 +9,7 @@ import Foundation
 
 extension Int {
     
-    func reviewCountForNews() -> String {
+    func reviewCountForNew() -> String {
         guard self != 0 else { return "" }
         var str = String(self)
         if 4...6 ~= str.count {
