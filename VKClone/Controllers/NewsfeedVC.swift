@@ -11,12 +11,6 @@ class NewsfeedVC: UIViewController {
     
     private var collectionView: UICollectionView!
     private var news = [NewsModel]()
-    private var dateFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "ru_RU")
-        df.dateFormat = "d MMM 'в' HH:mm"
-        return df
-    }()
     lazy private var refreshControl: UIRefreshControl = {
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refreshSwipe), for: .valueChanged)
@@ -37,7 +31,7 @@ class NewsfeedVC: UIViewController {
         collectionView.backgroundColor = .mainWhite()
         collectionView.dataSource = self
         collectionView.delegate = self
-        collectionView.addSubview(refreshControl)
+        collectionView.refreshControl = refreshControl
         view.addSubview(collectionView)
     }
     
@@ -60,7 +54,7 @@ extension NewsfeedVC {
     
     private func layoutForNeewsfeed() -> NSCollectionLayoutSection {
         
-        let size = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .estimated(33))
+        let size = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .estimated(1000))
         let item = NSCollectionLayoutItem(layoutSize: size)
         
         let group = NSCollectionLayoutGroup.horizontal(layoutSize: size, subitems: [item])
@@ -110,27 +104,30 @@ extension NewsfeedVC {
     }
     
     private func configureViewModel(news: NewsResponseWrapped) -> [NewsModel] {
-        let newsViewModel = news.response.items.map { item -> NewsModel in
-            let date = Date(timeIntervalSince1970: item.date)
-            let dateFormat = self.dateFormatter.string(from: date)
-                
-            guard let user = self.nameProfileOrGroup(sourceId: item.sourceId,
-                                                     profiles: news.response.profiles,
-                                                     groups: news.response.groups) else { fatalError("Error user configure") }
-            return NewsModel(postId: item.postId,
-                             icon: user.avatar,
-                             name: user.name,
-                             date: dateFormat,
-                             text: item.text,
-                             moreTextButton: self.configureMoreTextButton(text: item.text),
-                             photoAttacments: self.configurePhotoAttachment(value: item.attachments),
-                             likes: self.reviewCount(value: item.likes?.count),
-                             likesUser: self.isLike(value: item.likes?.userLikes),
-                             comments: self.reviewCount(value: item.comments?.count),
-                             reposts: self.reviewCount(value: item.reposts?.count),
-                             views: self.reviewCount(value: item.views?.count))
+        let queue = DispatchQueue(label: "Loading news", qos: .userInitiated)
+        var newsViewModel = [NewsModel]()
+        news.response.items.forEach { item in
+            queue.async(flags: .barrier) {
+                guard let user = self.nameProfileOrGroup(sourceId: item.sourceId,
+                                                         profiles: news.response.profiles,
+                                                         groups: news.response.groups) else { fatalError("Error user configure") }
+                newsViewModel.append(NewsModel(postId: item.postId,
+                                               icon: user.avatar,
+                                               name: user.name,
+                                               date: item.date.dateFormat(),
+                                               text: item.text,
+                                               moreTextButton: self.configureMoreTextButton(text: item.text),
+                                               photoAttacments: self.configurePhotoAttachment(value: item.attachments),
+                                               likes: item.likes?.count.reviewCountForNews(),
+                                               likesUser: self.isLike(value: item.likes?.userLikes),
+                                               comments: item.comments?.count.reviewCountForNews(),
+                                               reposts: item.reposts?.count.reviewCountForNews(),
+                                               views: item.views?.count.reviewCountForNews()))
+            }
         }
-        return newsViewModel
+        return queue.sync {
+            newsViewModel
+        }
     }
     
     private func nameProfileOrGroup(sourceId: Int, profiles: [Profile], groups: [Group]) -> UserViewModel? {
@@ -146,17 +143,6 @@ extension NewsfeedVC {
             return user
         }
         return nil
-    }
-    
-    private func reviewCount(value: Int?) -> String? {
-        guard let count = value, count != 0 else { return nil }
-        var str = String(count)
-        if 4...6 ~= str.count {
-            str = str.dropLast(3) + "K"
-        } else if str.count > 6 {
-            str = str.dropLast(6) + "M"
-        }
-        return str
     }
     
     private func configureMoreTextButton(text: String?) -> Bool {
